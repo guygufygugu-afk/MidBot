@@ -155,15 +155,15 @@ client.on('interactionCreate', async interaction => {
             if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
             
             const setupEmbed = new EmbedBuilder()
-                .setAuthor({ name: 'UNKNOWN AUTOMATION HUB v2', iconURL: guild.iconURL() })
+                .setAuthor({ name: 'Mid AUTOMATION HUB v2', iconURL: guild.iconURL() })
                 .setTitle('🪐 PANOU DE ASISTENȚĂ ȘI MANAGEMENT PERSISTENT')
                 .setColor(0x2B2D31)
                 .setDescription(
                     `### 🌌 Bine ai venit în Hub-ul Central\n` +
                     `Alege o opțiune din meniul de mai jos pentru a deschide o sesiune de comunicare criptată de tip **End-to-End**.\n\n` +
-                    `* **🛡️ Asistență Tehnică / Suport**\n` +
+                    `* **🛡️ Asistență Tehnică / Support**\n` +
                     `    *Pentru probleme legate de server sau asistență generală.*\n\n` +
-                    `* **💳 Departament Achiziții**\n` +
+                    `* **💳 Purchase**\n` +
                     `    *Deschide o sesiune securizată direct cu managerii comerciali.*\n\n` +
                     `* **🗳️ Recrutare Support Team**\n` +
                     `    *Depune dosarul tău digital pentru o funcție în Staff.*`
@@ -174,9 +174,9 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('mid_ticket_menu')
                 .setPlaceholder('Alege tipul de interacțiune dorit...')
                 .addOptions([
-                    { label: 'Suport Tehnic', description: 'Ai nevoie de ajutor? Deschide un ticket.', value: 'suport', emoji: '🛡️' },
-                    { label: 'Achiziții / Premium', description: 'Pentru cumpărături, apasă aici.', value: 'purchase', emoji: '💳' },
-                    { label: 'Aplică în Support Team', description: 'Completează aplicația de recrutare.', value: 'aplicatie', emoji: '🗳️' }
+                    { label: 'Support', description: 'Ai nevoie de ajutor? Deschide un ticket.', value: 'support', emoji: '🛡️' },
+                    { label: 'Achiziții', description: 'Pentru cumpărături, apasă aici.', value: 'purchase', emoji: '💳' },
+                    { label: 'Aplică în Staff Team', description: 'Completează aplicația de recrutare.', value: 'aplicatie', emoji: '🗳️' }
                 ]);
 
             const row = new ActionRowBuilder().addComponents(menu);
