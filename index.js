@@ -8,7 +8,6 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Încărcare automată comenzi (Aici botul va citi toate fișierele din folderul "commands")
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
@@ -20,12 +19,23 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.content.startsWith('+')) return;
-    const args = message.content.slice(1).split(/ +/);
+    // Verificări critice: dacă e bot sau nu începe cu +, ignorăm
+    if (message.author.bot) return;
+    if (!message.content.startsWith('+')) return;
+
+    const args = message.content.slice(1).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
     const command = client.commands.get(commandName);
-    if (command) await command.execute(message, args, client);
+    
+    // Execută comanda doar dacă ea există în folderul commands
+    if (command) {
+        try {
+            await command.execute(message, args, client);
+        } catch (error) {
+            console.error(error);
+        }
+    }
 });
 
 client.login(process.env.TOKEN);
