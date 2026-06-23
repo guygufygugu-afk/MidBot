@@ -503,7 +503,7 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_cyber_'))
     const trustLevel = userVouches.length >= 5 ? '🟢 DE ÎNCREDERE' : '🟡 UTILIZATOR NOU / NEVERIFICAT';
 
     const embedPremium = new EmbedBuilder()
-        .setAuthor({ name: `Sistem Securizat UNKNOWN v2`, iconURL: interaction.guild.iconURL() })
+        .setAuthor({ name: `Sistem Securizat MID v2`, iconURL: interaction.guild.iconURL() })
         .setTitle(`📡 LINIE DE ASISTENȚĂ INJECTATĂ — #${tokenData}`)
         .setColor(dept === 'purchase' ? 0x2ECC71 : 0x34495E)
         .setDescription(
@@ -643,7 +643,7 @@ if (cmd === 'profile') {
             `  🔑 **ID Securizat:** \`${user.id}\`\n` +
             `╚════════════════════════════════════╝`
         )
-        .setFooter({ text: 'Sistem de reputație asigurat de UNKNOWN Kernel' });
+        .setFooter({ text: 'Sistem de reputație asigurat de MID Kernel' });
 
     return message.reply({ embeds: [pEmbed] });
 }
@@ -676,4 +676,4 @@ process.on('unhandledRejection', (reason, promise) => { console.error('⚠️ [A
 process.on('uncaughtException', (err, origin) => { console.error('🚨 [ANTI-CRASH] Exception:', err); });
 
 client.login(process.env.TOKEN);
-                               
+    
