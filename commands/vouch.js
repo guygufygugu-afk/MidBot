@@ -1,7 +1,8 @@
 module.exports = {
     name: 'vouch',
-    execute(message, args) {
-        message.reply("✅ Sistemul de Vouch este activ!");
+    async execute(message, args) {
+        // Răspuns unic
+        await message.reply("✅ Sistemul de Vouch este activ!");
     }
 };
 
