@@ -155,15 +155,15 @@ client.on('interactionCreate', async interaction => {
             if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
             
             const setupEmbed = new EmbedBuilder()
-                .setAuthor({ name: 'Mid AUTOMATION HUB v2', iconURL: guild.iconURL() })
+                .setAuthor({ name: 'UNKNOWN AUTOMATION HUB v2', iconURL: guild.iconURL() })
                 .setTitle('🪐 PANOU DE ASISTENȚĂ ȘI MANAGEMENT PERSISTENT')
                 .setColor(0x2B2D31)
                 .setDescription(
                     `### 🌌 Bine ai venit în Hub-ul Central\n` +
                     `Alege o opțiune din meniul de mai jos pentru a deschide o sesiune de comunicare criptată de tip **End-to-End**.\n\n` +
-                    `* **🛡️ Asistență Tehnică / Support**\n` +
+                    `* **🛡️ Asistență Tehnică / Suport**\n` +
                     `    *Pentru probleme legate de server sau asistență generală.*\n\n` +
-                    `* **💳 Purchase**\n` +
+                    `* **💳 Departament Achiziții**\n` +
                     `    *Deschide o sesiune securizată direct cu managerii comerciali.*\n\n` +
                     `* **🗳️ Recrutare Support Team**\n` +
                     `    *Depune dosarul tău digital pentru o funcție în Staff.*`
@@ -174,9 +174,9 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('mid_ticket_menu')
                 .setPlaceholder('Alege tipul de interacțiune dorit...')
                 .addOptions([
-                    { label: 'Support', description: 'Ai nevoie de ajutor? Deschide un ticket.', value: 'support', emoji: '🛡️' },
-                    { label: 'Achiziții', description: 'Pentru cumpărături, apasă aici.', value: 'purchase', emoji: '💳' },
-                    { label: 'Aplică în Staff Team', description: 'Completează aplicația de recrutare.', value: 'aplicatie', emoji: '🗳️' }
+                    { label: 'Suport Tehnic', description: 'Ai nevoie de ajutor? Deschide un ticket.', value: 'suport', emoji: '🛡️' },
+                    { label: 'Achiziții / Premium', description: 'Pentru cumpărături, apasă aici.', value: 'purchase', emoji: '💳' },
+                    { label: 'Aplică în Support Team', description: 'Completează aplicația de recrutare.', value: 'aplicatie', emoji: '🗳️' }
                 ]);
 
             const row = new ActionRowBuilder().addComponents(menu);
@@ -449,8 +449,9 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_staff_'))
     const ore = interaction.fields.getTextInputValue('st_ore');
     const exp = interaction.fields.getTextInputValue('st_exp');
 
+    // Numele canalului va conține acum numele utilizatorului
     const chan = await interaction.guild.channels.create({
-        name: `🗳️-staff-${token}`,
+        name: `🗳️-staff-${interaction.user.username}`,
         type: ChannelType.GuildText,
         parent: CONFIG.TICKET_CATEGORY_ID || null,
         permissionOverwrites: [
@@ -471,7 +472,7 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_staff_'))
         );
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('tk_close').setLabel('Respinge Dosar').setStyle(ButtonStyle.Danger).setEmoji('❌'),
+        new ButtonBuilder().setCustomId('tk_close').setLabel('Close Ticket').setStyle(ButtonStyle.Danger).setEmoji('❌'),
         new ButtonBuilder().setCustomId('tk_claim').setLabel('Acceptă în Probe').setStyle(ButtonStyle.Success).setEmoji('✅')
     );
 
@@ -488,8 +489,9 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_cyber_'))
     const tinta = interaction.fields.getTextInputValue('f_tinta');
     const detalii = interaction.fields.getTextInputValue('f_detalii');
 
+    // Numele canalului va conține acum numele utilizatorului
     const chan = await interaction.guild.channels.create({
-        name: `🔒-${dept}-${tokenData}`,
+        name: `🔒-${dept}-${interaction.user.username}`,
         type: ChannelType.GuildText,
         parent: CONFIG.TICKET_CATEGORY_ID || null,
         permissionOverwrites: [
@@ -518,9 +520,9 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_cyber_'))
         .setTimestamp();
 
     const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('tk_claim').setLabel('Preluare Caz').setStyle(ButtonStyle.Success).setEmoji('🛡️'),
-        new ButtonBuilder().setCustomId('tk_unclaim').setLabel('Lasă Liber').setStyle(ButtonStyle.Secondary).setEmoji('🔓'),
-        new ButtonBuilder().setCustomId('tk_close').setLabel('Distruge Canalul').setStyle(ButtonStyle.Danger).setEmoji('☣️')
+        new ButtonBuilder().setCustomId('tk_claim').setLabel('Claim Ticket').setStyle(ButtonStyle.Success).setEmoji('🛡️'),
+        new ButtonBuilder().setCustomId('tk_unclaim').setLabel('Unclaim Ticket').setStyle(ButtonStyle.Secondary).setEmoji('🔓'),
+        new ButtonBuilder().setCustomId('tk_close').setLabel('Close Ticket').setStyle(ButtonStyle.Danger).setEmoji('☣️')
     );
 
     await chan.send({ content: `<@&${CONFIG.STAFF_ROLE_ID}> | Sesiune nouă deschisă de ${interaction.user}`, embeds: [embedPremium], components: [actionRow] });
@@ -530,7 +532,7 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_cyber_'))
 
 // --- INTERACȚIUNE BUTOANE TICHETE ---
 if (interaction.isButton()) {
-    const { customId, channel, user } = interaction;
+    const { customId, channel, user, member } = interaction;
     if (customId === 'tk_claim') {
         await channel.send({ embeds: [new EmbedBuilder().setDescription(`🛡️ Acest caz a fost preluat oficial de către operatorul ${user}.`).setColor(0x2ECC71)] });
         await interaction.reply({ content: 'Ai preluat tichetul.', ephemeral: true });
@@ -540,6 +542,10 @@ if (interaction.isButton()) {
         await interaction.reply({ content: 'Ai eliberat tichetul.', ephemeral: true });
     }
     if (customId === 'tk_close') {
+        // VERIFICARE STRICTĂ ROL OWNER
+        if (!member.roles.cache.has(CONFIG.OWNER_ROLE_ID)) {
+            return interaction.reply({ content: '❌ Permisiune respinsă. Doar utilizatorii cu rolul de **Owner** pot închide tichetele!', ephemeral: true });
+        }
         await interaction.reply({ content: 'Canalul se va distruge securizat în 5 secunde...' });
         setTimeout(() => channel.delete().catch(() => {}), 5000);
     }
@@ -671,9 +677,47 @@ if (cmd === 'leaderboard') {
 }
 });
 
+// ==========================================
+// 📡 SISTEM AUTOMAT LOGS (ȘTERGERI & MODIFICĂRI MESAJE)
+// ==========================================
+client.on('messageDelete', async message => {
+    if (message.author?.bot || !message.guild) return;
+    const logChan = message.guild.channels.cache.find(c => c.name === 'logs') || message.guild.channels.cache.get(CONFIG.LOG_CHANNEL_ID);
+    if (!logChan) return;
+
+    const embed = new EmbedBuilder()
+        .setTitle('🗑️ MESAJ ȘTERS DETECTAT')
+        .setColor(0xE74C3C)
+        .addFields(
+            { name: '👤 Autor:', value: `${message.author} (\`${message.author.id}\`)`, inline: true },
+            { name: '📍 Canal:', value: `${message.channel}`, inline: true },
+            { name: '💬 Conținut șters:', value: `\`\`\`text\n${message.content || '[Fără text / Doar atașament]'}\n\`\`\`` }
+        )
+        .setTimestamp();
+    logChan.send({ embeds: [embed] }).catch(() => {});
+});
+
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+    if (oldMessage.author?.bot || !oldMessage.guild || oldMessage.content === newMessage.content) return;
+    const logChan = oldMessage.guild.channels.cache.find(c => c.name === 'logs') || oldMessage.guild.channels.cache.get(CONFIG.LOG_CHANNEL_ID);
+    if (!logChan) return;
+
+    const embed = new EmbedBuilder()
+        .setTitle('📝 MESAJ MODIFICAT DETECTAT')
+        .setColor(0xE67E22)
+        .addFields(
+            { name: '👤 Autor:', value: `${oldMessage.author}`, inline: true },
+            { name: '📍 Canal:', value: `${oldMessage.channel}`, inline: true },
+            { name: '⬅️ Conținut Vechi:', value: `\`\`\`text\n${oldMessage.content || '[Fără text]'}\n\`\`\`` },
+            { name: '➡️ Conținut Nou:', value: `\`\`\`text\n${newMessage.content || '[Fără text]'}\n\`\`\`` }
+        )
+        .setTimestamp();
+    logChan.send({ embeds: [embed] }).catch(() => {});
+});
+
 // --- 🛡️ ENGINE COMPACT ANTI-CRASH GLOBAL ---
 process.on('unhandledRejection', (reason, promise) => { console.error('⚠️ [ANTI-CRASH] Rejection:', reason); });
 process.on('uncaughtException', (err, origin) => { console.error('🚨 [ANTI-CRASH] Exception:', err); });
 
 client.login(process.env.TOKEN);
-                
+        
