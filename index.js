@@ -619,7 +619,6 @@ client.on('messageCreate', async message => {
         const pEmbed = new EmbedBuilder().setTitle(`👤 TRUST PROFILE MATRIX — ${user.username}`).setColor(0x2B2D31).setThumbnail(user.displayAvatarURL({ dynamic: true })).addFields({ name: '📈 Recenzii Aprobate', value: `\`[ ${score} Vouch-uri ]\``, inline: true }, { name: '🛡️ Certificare', value: `\`${stars}\``, inline: true });
         return message.reply({ embeds: [pEmbed] });
     }
-
     if (cmd === 'leaderboard') {
         const allVouches = Database.getAll('vouches');
         const sorted = Object.keys(allVouches)
@@ -636,8 +635,7 @@ client.on('messageCreate', async message => {
                 const u = client.users.cache.get(item.userId);
                 table += `#${String(idx + 1).padEnd(2)} | ${String(item.count).padEnd(9)} | ${u ? u.username : 'ID: ' + item.userId}\n`;
             });
-            table += '
-```';
+            table += '```';
             lbEmbed.setDescription(table);
         }
         return message.reply({ embeds: [lbEmbed] });
@@ -653,5 +651,5 @@ process.on('uncaughtException', (err, origin) => {
 });
 
 client.login(process.env.TOKEN);
-                                                                                      
-                
+
+    
