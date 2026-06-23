@@ -1,16 +1,10 @@
 {
   "name": "midbot",
   "version": "1.0.0",
-  "description": "Discord Bot pe Render",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "express": "^4.21.2"
-  },
-  "engines": {
-    "node": ">=16.9.0"
+    "discord.js": "^14.14.0",
+    "dotenv": "^16.0.0",
+    "fs": "0.0.1-security"
   }
 }
