@@ -22,14 +22,14 @@ app.listen(10000, () => console.log('[WEB] Server de monitorizare mapat pe portu
 
 // --- ⚙️ CONFIGURAȚIE CENTRALĂ CU ID-URILE TALE REALE ---
 const CONFIG = {
-    OWNER_ROLE_ID: "1518703841070158004",       // ID Owner Role
-    STAFF_ROLE_ID: "1518703920174731504",       // ID Staff Role
-    SCAMMER_ROLE_ID: "1518703743070110003",     // ID Scammer Role
-    SUSPECT_ROLE_ID: "1518703793544364223",     // ID Suspect Role
-    LOG_CHANNEL_ID: "1518704438053961861",      // ID Canal Logs
-    VOUCH_CHANNEL_ID: "1518704760541413376",    // ID Canal Vouch Review
-    TICKET_CATEGORY_ID: "1518704343275143188",  // ID Categorie Tichete
-    WELCOME_CHANNEL_ID: "1518704531402264586"   // ID Canal Welcome & Bye
+    OWNER_ROLE_ID: "1518703841070158004",       
+    STAFF_ROLE_ID: "1518703920174731504",       
+    SCAMMER_ROLE_ID: "1518703743070110003",     
+    SUSPECT_ROLE_ID: "1518703793544364223",     
+    LOG_CHANNEL_ID: "1518704438053961861",      
+    VOUCH_CHANNEL_ID: "1518704760541413376",    
+    TICKET_CATEGORY_ID: "1518704343275143188",  
+    WELCOME_CHANNEL_ID: "1518704531402264586"   
 };
 
 const VISUALS = {
@@ -165,8 +165,6 @@ client.on('interactionCreate', async interaction => {
                     `    *Pentru probleme legate de server sau asistență generală.*\n\n` +
                     `* **💳 Departament Achiziții**\n` +
                     `    *Deschide o sesiune securizată direct cu managerii comerciali.*\n\n` +
-                    `* **🎁 Revendicare Premii GALA**\n` +
-                    `    *Validare manuală pentru fondul de **15.000 RON**.*\n\n` +
                     `* **🗳️ Recrutare Support Team**\n` +
                     `    *Depune dosarul tău digital pentru o funcție în Staff.*`
                 )
@@ -178,13 +176,131 @@ client.on('interactionCreate', async interaction => {
                 .addOptions([
                     { label: 'Suport Tehnic', description: 'Ai nevoie de ajutor? Deschide un ticket.', value: 'suport', emoji: '🛡️' },
                     { label: 'Achiziții / Premium', description: 'Pentru cumpărături, apasă aici.', value: 'purchase', emoji: '💳' },
-                    { label: 'Revendică Premiu GALA', description: 'Deschide un tichet de revendicare reward.', value: 'reward', emoji: '🎁' },
                     { label: 'Aplică în Support Team', description: 'Completează aplicația de recrutare.', value: 'aplicatie', emoji: '🗳️' }
                 ]);
 
             const row = new ActionRowBuilder().addComponents(menu);
             await interaction.reply({ content: 'Panoul a fost inițializat cu succes.', ephemeral: true });
             await interaction.channel.send({ embeds: [setupEmbed], components: [row] });
+            Telemetry.stopProfiling(commandName, pToken);
+            return;
+        }
+
+        // --- COMANDA /BAN ---
+        if (commandName === 'ban') {
+            if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
+            const targetUser = options.getUser('utilizator');
+            const reason = options.getString('motiv') || 'Nerespectarea regulamentului serverului.';
+            if (!targetUser) return interaction.reply({ content: 'Parametru utilizator lipsă.', ephemeral: true });
+
+            const memberObj = guild.members.cache.get(targetUser.id);
+            if (memberObj && !memberObj.bannable) {
+                return interaction.reply({ content: '❌ Nu dețin ierarhia necesară pentru a bana acest membru.', ephemeral: true });
+            }
+
+            await guild.members.ban(targetUser.id, { reason: `${interaction.user.username}: ${reason}` }).catch(() => {});
+            
+            const banEmbed = new EmbedBuilder()
+                .setTitle('🔨 Protocol Ban Executat')
+                .setColor(0xE74C3C)
+                .setDescription(`Membru eliminat definitiv: <@${targetUser.id}>\nOperator: ${interaction.user}\nMotiv: \`${reason}\``);
+
+            await interaction.reply({ embeds: [banEmbed] });
+            await internallog(guild, `🔴 Ban persistent: ${targetUser.username} a fost expulzat de către ${interaction.user.username}.`);
+            Telemetry.stopProfiling(commandName, pToken);
+            return;
+        }
+
+        // --- COMANDA /UNBAN ---
+        if (commandName === 'unban') {
+            if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
+            const targetId = options.getString('id_utilizator');
+            const reason = options.getString('motiv') || 'Revocare sancțiune.';
+            if (!targetId) return interaction.reply({ content: 'Trebuie să specifici ID-ul de Discord al utilizatorului.', ephemeral: true });
+
+            try {
+                await guild.members.unban(targetId, reason);
+                const unbanEmbed = new EmbedBuilder()
+                    .setTitle('🔓 Protocol Unban Executat')
+                    .setColor(0x2ECC71)
+                    .setDescription(`ID-ul \`${targetId}\` a fost curățat din registrul de banuri.\nMotiv: \`${reason}\``);
+                
+                await interaction.reply({ embeds: [unbanEmbed] });
+                await internallog(guild, `🟢 Unban audit: ID-ul ${targetId} a fost iertat de către ${interaction.user.username}.`);
+            } catch (error) {
+                await interaction.reply({ content: '❌ Eroare: Acest ID nu se află în lista de banuri sau este invalid.', ephemeral: true });
+            }
+            Telemetry.stopProfiling(commandName, pToken);
+            return;
+        }
+
+        // --- COMANDA /KICK ---
+        if (commandName === 'kick') {
+            if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
+            const targetUser = options.getUser('utilizator');
+            const reason = options.getString('motiv') || 'Expulzat temporar de pe server.';
+            if (!targetUser) return interaction.reply({ content: 'Parametru utilizator lipsă.', ephemeral: true });
+
+            const memberObj = guild.members.cache.get(targetUser.id);
+            if (!memberObj) return interaction.reply({ content: 'Utilizatorul nu este prezent pe server.', ephemeral: true });
+            if (!memberObj.kickable) return interaction.reply({ content: '❌ Membrul deține protecție ierarhică. Nu îi pot da kick.', ephemeral: true });
+
+            await memberObj.kick(`${interaction.user.username}: ${reason}`).catch(() => {});
+
+            const kickEmbed = new EmbedBuilder()
+                .setTitle('👢 Protocol Kick Executat')
+                .setColor(0xE67E22)
+                .setDescription(`Membru dat afară: <@${targetUser.id}>\nOperator: ${interaction.user}\nMotiv: \`${reason}\``);
+
+            await interaction.reply({ embeds: [kickEmbed] });
+            await internallog(guild, `🟠 Kick manual: ${targetUser.username} a fost dat afară de către ${interaction.user.username}.`);
+            Telemetry.stopProfiling(commandName, pToken);
+            return;
+        }
+
+        // --- COMANDA /TIMEOUT ---
+        if (commandName === 'timeout') {
+            if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
+            const targetUser = options.getUser('utilizator');
+            const duration = options.getInteger('minute');
+            const reason = options.getString('motiv') || 'Izolare temporară pentru comportament neadecvat.';
+            if (!targetUser || !duration) return interaction.reply({ content: 'Parametri incompleți.', ephemeral: true });
+
+            const memberObj = guild.members.cache.get(targetUser.id);
+            if (!memberObj) return interaction.reply({ content: 'Utilizatorul nu se află pe server.', ephemeral: true });
+
+            await memberObj.timeout(duration * 60 * 1000, `${interaction.user.username}: ${reason}`).catch(() => {});
+
+            const timeEmbed = new EmbedBuilder()
+                .setTitle('⏳ Protocol Timeout Înregistrat')
+                .setColor(0xE67E22)
+                .setDescription(`Membru izolat: <@${targetUser.id}>\nDurată: \`${duration} minute\`\nMotiv: \`${reason}\``);
+
+            await interaction.reply({ embeds: [timeEmbed] });
+            await internallog(guild, `⏳ Timeout: ${targetUser.username} redus la tăcere pentru ${duration}m de ${interaction.user.username}.`);
+            Telemetry.stopProfiling(commandName, pToken);
+            return;
+        }
+
+        // --- COMANDA /UNTIMEOUT ---
+        if (commandName === 'untimeout') {
+            if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
+            const targetUser = options.getUser('utilizator');
+            const reason = options.getString('motiv') || 'Restabilire drepturi de comunicare.';
+            if (!targetUser) return interaction.reply({ content: 'Parametru utilizator lipsă.', ephemeral: true });
+
+            const memberObj = guild.members.cache.get(targetUser.id);
+            if (!memberObj) return interaction.reply({ content: 'Utilizatorul nu se află pe server.', ephemeral: true });
+
+            await memberObj.timeout(null, `${interaction.user.username}: ${reason}`).catch(() => {});
+
+            const untimeEmbed = new EmbedBuilder()
+                .setTitle('🔊 Protocol Untimeout Executat')
+                .setColor(0x2ECC71)
+                .setDescription(`Drepturi restabilite pentru: <@${targetUser.id}>\nMotiv: \`${reason}\``);
+
+            await interaction.reply({ embeds: [untimeEmbed] });
+            await internallog(guild, `🔊 Untimeout: Scoasă izolarea pentru ${targetUser.username} de către ${interaction.user.username}.`);
             Telemetry.stopProfiling(commandName, pToken);
             return;
         }
@@ -222,86 +338,64 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // --- COMANDA /CAZIER ---
-        if (commandName === 'cazier') {
-            const targetUser = options.getUser('utilizator') || interaction.user;
+        // --- COMANDA /UNWARN ---
+        if (commandName === 'unwarn') {
+            if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
+            const targetUser = options.getUser('utilizator');
+            if (!targetUser) return interaction.reply({ content: 'Parametru utilizator lipsă.', ephemeral: true });
+
             const history = Database.getSpace('sanctions', targetUser.id, []);
-            
-            if (history.length === 0) {
-                Telemetry.stopProfiling(commandName, pToken);
-                return interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${VISUALS.staff} Dosar Penal Electronic - ${targetUser.username}`).setDescription(`${VISUALS.success} Utilizatorul are un cazier complet curat. Nu au fost găsite abateri.`).setColor(0x34495E)] });
+            const warnIndices = history.reduce((acc, curr, idx) => {
+                if (curr.type === 'WARN') acc.push(idx);
+                return acc;
+            }, []);
+
+            if (warnIndices.length === 0) {
+                return interaction.reply({ content: '❌ Utilizatorul selectat nu are niciun avertisment activ în baza de date.', ephemeral: true });
             }
 
-            const itemsPerPage = 3;
-            const totalPages = Math.ceil(history.length / itemsPerPage);
-            let currentPage = 1;
+            // Scoate ultimul avertisment primit din vector
+            const lastWarnIndex = warnIndices[warnIndices.length - 1];
+            history.splice(lastWarnIndex, 1);
+            Database.setSpace('sanctions', targetUser.id, history);
 
-            const generateCazierPage = (page) => {
-                const start = (page - 1) * itemsPerPage;
-                const end = start + itemsPerPage;
-                const subset = history.slice(start, end);
+            const remainingWarns = history.filter(s => s.type === 'WARN').length;
 
-                let pageBuffer = '';
-                subset.forEach((s, i) => {
-                    pageBuffer += `\`[#${start + i + 1}]\` **[${s.type}]** ── ${s.reason}\n*Mod: ${s.moderator} | Data: ${s.date}*\n\n`;
-                });
+            const unwarnEmbed = new EmbedBuilder()
+                .setTitle('✅ Sancțiune Retrasă')
+                .setColor(0x2ECC71)
+                .setDescription(`Ultimul avertisment pentru <@${targetUser.id}> a fost anulat.\nTotal actual: **(${remainingWarns}/3)**`);
 
-                return new EmbedBuilder()
-                    .setTitle(`${VISUALS.staff} Dosar Penal Electronic - ${targetUser.username}`)
-                    .setColor(0x34495E)
-                    .setDescription(pageBuffer)
-                    .setFooter({ text: `Pagina ${page} / ${totalPages} • Sincronizat persistent pe Disc` });
-            };
-
-            const actionButtonsRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('cz_prev').setLabel('Anterioară').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId('cz_next').setLabel('Următoarea').setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
-            );
-
-            const responseMessage = await interaction.reply({ embeds: [generateCazierPage(1)], components: [actionButtonsRow], fetchReply: true });
+            await interaction.reply({ embeds: [unwarnEmbed] });
+            await internallog(guild, `✅ Unwarn: ${interaction.user.username} i-a iertat un avertisment lui ${targetUser.username}.`);
             Telemetry.stopProfiling(commandName, pToken);
-
-            const collector = responseMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-            
-            collector.on('collect', async btnInteraction => {
-                if (btnInteraction.user.id !== interaction.user.id) return btnInteraction.reply({ content: '❌ Nu poți naviga în acest meniu.', ephemeral: true });
-                if (btnInteraction.customId === 'cz_prev') currentPage--;
-                if (btnInteraction.customId === 'cz_next') currentPage++;
-
-                const updatedRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('cz_prev').setLabel('Anterioară').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
-                    new ButtonBuilder().setCustomId('cz_next').setLabel('Următoarea').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
-                );
-
-                await btnInteraction.update({ embeds: [generateCazierPage(currentPage)], components: [updatedRow] });
-            });
             return;
         }
 
-        // --- COMANDA /STATS (DESIGN ANSI COMPLET COLORAT) ---
+        // --- COMANDA /STATS ---
         if (commandName === 'stats') {
             const memory = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
             const statsEmbed = new EmbedBuilder()
                 .setTitle('⚡ EXECUTIVE ENGINE ── HARDWARE DIAGNOSTICS')
                 .setColor(0x2B2D31)
-                            .setDescription(
-                `### 📡 Sesiune Monitorizare Activă\n` +
-                `> Nucleul V8 rulează în parametri optimi sub criptare persistentă.\n\n` +
-                `\`\`\`ansi\n` +
-                `[1;30m[SYSTEM][0m [1;34mEngine Status:[0m  [1;32mOPERATIONAL[0m\n` +
-                `[1;30m[MEMORY][0m [1;34mHeap Allocated:[0m [1;33m${memory} MB[0m\n` +
-                `[1;30m[THREAD][0m [1;34mEvent Loop Lag:[0m [1;35m${Telemetry.getLag()}[0m\n` +
-                `[1;30m[SOCKET][0m [1;34mAPI Latency:[0m    [1;36m${client.ws.ping}ms[0m\n` +
-                `\`\`\`\n` +
-                ` 🟢 *Toate sistemele de securitate sunt active.*`
-            );
-        await interaction.reply({ embeds: [statsEmbed] });
-        Telemetry.stopProfiling(commandName, pToken);
-        return;
-    }
+                .setDescription(
+                    `### 📡 Sesiune Monitorizare Activă\n` +
+                    `> Nucleul V8 rulează în parametri optimi sub criptare persistentă.\n\n` +
+                    `\`\`\`ansi\n` +
+                    `[1;30m[SYSTEM][0m [1;34mEngine Status:[0m  [1;32mOPERATIONAL[0m\n` +
+                    `[1;30m[MEMORY][0m [1;34mHeap Allocated:[0m [1;33m${memory} MB[0m\n` +
+                    `[1;30m[THREAD][0m [1;34mEvent Loop Lag:[0m [1;35m${Telemetry.getLag()}[0m\n` +
+                    `[1;30m[SOCKET][0m [1;34mAPI Latency:[0m    [1;36m${client.ws.ping}ms[0m\n` +
+                    `\`\`\`\n` +
+                    ` 🟢 *Toate sistemele de securitate sunt active.*`
+                );
+            await interaction.reply({ embeds: [statsEmbed] });
+            Telemetry.stopProfiling(commandName, pToken);
+            return;
+        }
 
-    // --- COMENZI DE MODERARE EXTRA ---
-    if (commandName === 'clear') {
+        // --- COMENZI DE MODERARE EXTRA ---
+            if (commandName === 'clear') {
         if (!isStaff) return interaction.reply({ content: 'Permisiuni administrative insuficiente.', ephemeral: true });
         const amount = options.getInteger('cantitate');
         await interaction.channel.bulkDelete(amount, true).catch(() => {});
@@ -336,15 +430,6 @@ if (interaction.isStringSelectMenu() && interaction.customId === 'mid_ticket_men
         const qExp = new TextInputBuilder().setCustomId('st_exp').setLabel('De ce să te alegem pe tine? (Experiență)').setStyle(TextInputStyle.Paragraph).setPlaceholder('Descrie proiectele în care ai mai lucrat...').setRequired(true);
         
         modal.addComponents(new ActionRowBuilder().addComponents(qVarsta), new ActionRowBuilder().addComponents(qOre), new ActionRowBuilder().addComponents(qExp));
-        return await interaction.showModal(modal);
-    }
-
-    if (val === 'reward') {
-        const modal = new ModalBuilder().setCustomId(`md_reward_${hashId}`).setTitle('🎁 VALIDARE PREMIU GALA');
-        const qCod = new TextInputBuilder().setCustomId('rw_cod').setLabel('Cod Eveniment / ID Extragere').setStyle(TextInputStyle.Short).setPlaceholder('Ex: GALA-15K-XXXX').setRequired(true);
-        const qDovada = new TextInputBuilder().setCustomId('rw_dovada').setLabel('Link Dovadă (Imgur/Discord link)').setStyle(TextInputStyle.Short).setPlaceholder('https://...').setRequired(true);
-        
-        modal.addComponents(new ActionRowBuilder().addComponents(qCod), new ActionRowBuilder().addComponents(qDovada));
         return await interaction.showModal(modal);
     }
 
@@ -392,42 +477,6 @@ if (interaction.isModalSubmit() && interaction.customId.startsWith('md_staff_'))
 
     await chan.send({ embeds: [appEmbed], components: [row] });
     return interaction.editReply(`✅ Candidatura ta a fost înregistrată în registrul securizat: ${chan}`);
-}
-
-// --- PROCESARE FORMULAR REWARD ---
-if (interaction.isModalSubmit() && interaction.customId.startsWith('md_reward_')) {
-    await interaction.deferReply({ ephemeral: true });
-    const token = interaction.customId.split('_')[2];
-    const cod = interaction.fields.getTextInputValue('rw_cod');
-    const dovada = interaction.fields.getTextInputValue('rw_dovada');
-
-    const chan = await interaction.guild.channels.create({
-        name: `🎁-reward-${token}`,
-        type: ChannelType.GuildText,
-        parent: CONFIG.TICKET_CATEGORY_ID || null,
-        permissionOverwrites: [
-            { id: interaction.guild.id, deny: ['ViewChannel'] },
-            { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-            { id: CONFIG.STAFF_ROLE_ID, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] }
-        ]
-    });
-
-    const rwdEmbed = new EmbedBuilder()
-        .setTitle(`💎 REVENDICARE PREMIU GALA — ID ${token}`)
-        .setColor(0x2ECC71)
-        .setDescription(`Utilizatorul ${interaction.user} solicită validarea unui premiu fiscal de pe server.`)
-        .addFields(
-            { name: '🎫 Cod Unic Validare:', value: `\`${cod}\``, inline: false },
-            { name: '🔗 Link Referință / Dovadă:', value: `${dovada}`, inline: false }
-        );
-
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('tk_claim').setLabel('Preia Solicitare').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('tk_close').setLabel('Închide').setStyle(ButtonStyle.Danger)
-    );
-
-    await chan.send({ embeds: [rwdEmbed], components: [row] });
-    return interaction.editReply(`✅ Solicitarea de premiu a generat canalul criptat: ${chan}`);
 }
 
 // --- PROCESARE TICHETE GENERICE (SUPORT / ACHIZIȚII) ---
@@ -627,4 +676,4 @@ process.on('unhandledRejection', (reason, promise) => { console.error('⚠️ [A
 process.on('uncaughtException', (err, origin) => { console.error('🚨 [ANTI-CRASH] Exception:', err); });
 
 client.login(process.env.TOKEN);
-                     
+                               
