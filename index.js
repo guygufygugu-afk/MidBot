@@ -676,4 +676,4 @@ process.on('unhandledRejection', (reason, promise) => { console.error('⚠️ [A
 process.on('uncaughtException', (err, origin) => { console.error('🚨 [ANTI-CRASH] Exception:', err); });
 
 client.login(process.env.TOKEN);
-    
+                
